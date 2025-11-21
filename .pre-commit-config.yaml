@@ -1,0 +1,59 @@
+repos:
+  - repo: local
+    hooks:
+      - id: requirements-prod
+        name: Generate requirements.txt
+        entry: uv
+        args: [pip, compile, api/pyproject.toml, -o, api/requirements.txt]
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.14.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        files: ^api/
+
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.9.0
+    hooks:
+      - id: black
+        files: ^api/
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 7.0.0
+    hooks:
+      - id: isort
+        args: [--profile, black]
+        files: ^api/
+
+  # Add type checking with Pyright
+  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
+    rev: 1.32.1
+    hooks:
+      - id: basedpyright
+        args: ["--level", "error"]
+        files: ^api/
+
+  - repo: local
+    hooks:
+      - id: app-prettier
+        name: run prettier
+        language: system
+        files: frontend/^.*$
+        types_or: [javascript, json]
+        entry: |
+          bash -c 'npm run fix:prettier "${@}"' --
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint for frontend
+        entry: pnpm
+        args: ["--dir", "frontend", "eslint", "."]
+        language: system
+        types: [javascript, jsx, ts, tsx]
+        files: ^frontend/
