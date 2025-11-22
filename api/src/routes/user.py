@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
+from starlette.responses import JSONResponse
+
 from src.models import (
     ErrorDescription,
     ErrorResponse,
@@ -16,7 +18,6 @@ from src.models import (
     UserResponse,
     get_session,
 )
-from starlette.responses import JSONResponse
 
 
 class UserCreate(BaseModel):
