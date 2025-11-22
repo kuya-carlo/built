@@ -40,7 +40,7 @@ def error_response(status: int, title: str, detail: str) -> JSONResponse:
             )
         ],
     )
-    return JSONResponse(status_code=status, content=json.loads(error.json()))
+    return JSONResponse(status_code=status, content=json.loads(error.model_dump_json()))
 
 
 class UserRouter(APIRouter):

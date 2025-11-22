@@ -10,8 +10,12 @@ dependencies = [
     "typing>=3.10.0.0",
     "uuid>=1.30",
 ]
+
 [tool.basedpyright]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.13"
 extraPaths = ["."]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
