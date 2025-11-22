@@ -24,7 +24,7 @@ jobs:
         run: |
           uv venv
           uv pip install -r requirements.txt
-          uv pip install ruff black isort basedpyright
+          uv pip install ruff black isort basedpyright pytest pytest-asyncio httpx
 
       - name: Run ruff
         working-directory: ./api
@@ -60,7 +60,6 @@ jobs:
         run: |
           uv venv
           uv pip install -r requirements.txt
-          uv pip install pytest pytest-asyncio httpx
 
       - name: Run tests
         working-directory: ./api
