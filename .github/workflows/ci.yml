@@ -36,7 +36,7 @@ jobs:
 
       - name: Run isort
         working-directory: ./api
-        run: uv run isort --check .
+        run: uv run isort --profile black --check .
 
       - name: Run basedpyright
         working-directory: ./api
