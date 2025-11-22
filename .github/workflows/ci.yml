@@ -40,7 +40,7 @@ jobs:
 
       - name: Run basedpyright
         working-directory: ./api
-        run: uv run basedpyright
+        run: uv run basedpyright --warnings
 
   test:
     runs-on: ubuntu-latest
