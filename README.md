@@ -8,7 +8,7 @@ A asset management system for construction companies
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
     - [Fullstack](#fullstack)
-    - [Half stack](#half-stack)
+    - [Manual](#manual)
       - [Backend](#backend)
       - [Frontend(dev)](#frontenddev)
       - [Frontend(prod)](#frontendprod)
@@ -21,7 +21,7 @@ A asset management system for construction companies
 docker compose up -d
 ```
 
-### Half stack
+### Manual
 
 #### Backend
 
