@@ -66,7 +66,7 @@ jobs:
         run: |
           uv venv
           uv pip install -r requirements.txt
-          uv pip install pytest pytest-asyncio httpx
+          uv pip install pytest pytest-asyncio pytest-cov httpx coverage[toml]
 
       - name: Run tests
         working-directory: ./api
