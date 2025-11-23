@@ -12,7 +12,7 @@ def error_response(errors, status: int = 500) -> JSONResponse:
     for err in errors:
         errorpart.append(
             ErrorDescription(
-                status=err["status"],
+                status=err["status"] if "status" in err else status,
                 title=err["title"],
                 detail=err["detail"],
             )

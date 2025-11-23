@@ -8,3 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# code coverage checks
+coverage/
+.coverage*
+coverage.xml
+
+# app database
+*.db
