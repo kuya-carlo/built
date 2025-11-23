@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+
 from src.models import init_db
 from src.routes import UserRouter
 from src.utils.errors import validation_exception_handler

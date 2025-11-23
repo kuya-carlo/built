@@ -2,8 +2,9 @@ import json
 
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
-from src.models import ErrorDescription, ErrorResponse
 from starlette.responses import JSONResponse
+
+from src.models import ErrorDescription, ErrorResponse
 
 
 def error_response(errors, status: int = 500) -> JSONResponse:
