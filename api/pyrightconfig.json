@@ -3,5 +3,13 @@
   "venv": ".venv",
   "pythonVersion": "3.13",
   "include": ["."],
-  "extraPaths": ["."]
+  "extraPaths": ["."],
+  "exclude": [
+    "tests",
+    "**/__pycache__",
+    ".venv"
+  ],
+  "ignore": [
+    "tests/**"
+  ]
 }
