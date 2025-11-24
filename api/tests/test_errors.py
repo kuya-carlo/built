@@ -6,7 +6,7 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
-from src.utils.errors import error_response, validation_exception_handler
+from src.utils.errors import error_handler, error_response
 
 
 class TestErrorResponse:
@@ -79,7 +79,7 @@ class TestValidationExceptionHandler:
         except ValidationError as e:
             exc = RequestValidationError(e.errors())
 
-        response = await validation_exception_handler(mock_request, exc)
+        response = await error_handler(mock_request, exc)
 
         assert response.status_code == 422
         data = json.loads(response.body.decode())
@@ -105,7 +105,7 @@ class TestValidationExceptionHandler:
         except ValidationError as e:
             exc = RequestValidationError(e.errors())
 
-        response = await validation_exception_handler(mock_request, exc)
+        response = await error_handler(mock_request, exc)
 
         data = json.loads(response.body.decode())
         # Check that the field name appears in the detail
@@ -117,14 +117,15 @@ class TestValidationExceptionHandler:
         mock_request = MagicMock(spec=Request)
         exc = Exception("Some random error")
 
-        response = await validation_exception_handler(mock_request, exc)
+        response = await error_handler(mock_request, exc)
 
-        assert response.status_code == 422
+        assert response.status_code == 500  # Changed from 422 to 500
         data = json.loads(response.body.decode())
         assert data["result"] == "error"
         assert len(data["errors"]) == 1
-        assert data["errors"][0]["title"] == "Validation error"
-        assert data["errors"][0]["detail"] == "Some random error"
+        assert data["errors"][0]["status"] == 500
+        assert data["errors"][0]["title"] == "Internal Server Error"
+        assert "Some random error" in data["errors"][0]["detail"]
 
     @pytest.mark.asyncio
     async def test_validation_error_with_nested_fields(self):
@@ -147,7 +148,7 @@ class TestValidationExceptionHandler:
             exc = RequestValidationError(e.errors())
 
         if exc:
-            response = await validation_exception_handler(mock_request, exc)
+            response = await error_handler(mock_request, exc)
 
             data = json.loads(response.body.decode())
             assert data["result"] == "error"

@@ -1,23 +1,22 @@
-import json
 import uuid
-from typing import List, Optional, Sequence
+from typing import Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ValidationError
-from sqlalchemy.exc import IntegrityError
+from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
 from starlette.responses import JSONResponse
 
 from src.models import (
-    ErrorDescription,
     ErrorResponse,
     Project,
     ProjectAttribute,
     SingleSuccessResponse,
+    SuccessResponse,
     User,
     UserResponse,
     get_session,
 )
+from src.utils import create, delete, log, prep_create, read, update
 
 
 class UserCreate(BaseModel):
@@ -25,23 +24,16 @@ class UserCreate(BaseModel):
         "json_schema_extra": {"example": {"name": "John", "email": "john@example.com"}}
     }
     name: str
-    email: str
+    email: EmailStr
     user_id: Optional[uuid.UUID] = None
 
 
-def error_response(status: int, title: str, detail: str) -> JSONResponse:
-
-    error = ErrorResponse(
-        result="error",
-        errors=[
-            ErrorDescription(
-                status=status,
-                title=title,
-                detail=detail,
-            )
-        ],
-    )
-    return JSONResponse(status_code=status, content=json.loads(error.model_dump_json()))
+class UserUpdate(BaseModel):
+    model_config = {
+        "json_schema_extra": {"example": {"name": "John", "email": "john@example.com"}}
+    }
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 class UserRouter(APIRouter):
@@ -52,7 +44,6 @@ class UserRouter(APIRouter):
     def _register_routes(self):
         @self.get(
             "/{user_id}",
-            response_model=SingleSuccessResponse[UserResponse],
             responses={
                 200: {
                     "description": "User exists",
@@ -63,28 +54,17 @@ class UserRouter(APIRouter):
             },
         )
         def get_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
-            try:
-                user: Optional[User] = session.get(User, user_id)
-                if not user:
-                    return error_response(
-                        status=404,
-                        title="User not found",
-                        detail=f"User with id {user_id} not found",
-                    )
-                projects = session.exec(
-                    select(Project).where(Project.user_id == user_id)
-                ).all()
-                return self._parse_user(user, self._parse_projects(projects))
-            except Exception as e:
-                return error_response(
-                    status=500,
-                    title="Internal Server Error",
-                    detail=str(e),
-                )
+            user = read(session, user_id, User)
+            log(
+                session=session,
+                action="GET_USERPROFILE",
+                message=f"Got user profile for {user_id}",
+                user_id=user_id,
+            )
+            return self._parse_user(user, session)
 
         @self.post(
             "/",
-            response_model=SingleSuccessResponse[UserResponse],
             responses={
                 200: {
                     "description": "User created",
@@ -99,70 +79,90 @@ class UserRouter(APIRouter):
             user_data: UserCreate,
             session: Session = Depends(get_session),
         ):
-            if not user_data.name or not user_data.email:
-                return error_response(
-                    422, "Validation Error", "name and email are required"
-                )
-            with session:
-                if user_data.user_id and session.get(User, user_data.user_id):
-                    return error_response(
-                        409,
-                        "Conflict in data",
-                        f"User with id {user_data.user_id} already exists",
-                    )
-                if user_data.user_id:
-                    user = User(
-                        user_id=user_data.user_id,
-                        name=user_data.name,
-                        email=user_data.email,
-                    )
-                else:
-                    user = User(name=user_data.name, email=user_data.email)
-                session.add(user)
-                try:
-
-                    session.commit()
-                    session.refresh(user)
-                except ValidationError as e:
-                    session.rollback()
-                    return error_response(
-                        status=409, title="Conflict in data", detail=str(e)
-                    )
-                except IntegrityError as e:
-                    session.rollback()
-                    return error_response(
-                        status=422, title="Validation Error", detail=str(e.orig)
-                    )
-                except Exception as e:
-                    session.rollback()
-                    return error_response(
-                        status=500,
-                        title="Internal Server Error",
-                        detail=str(e),
-                    )
-            return self._parse_user(user)
-
-    @staticmethod
-    def _parse_projects(projects: Sequence[Project]) -> List[ProjectAttribute]:
-        parsed_projects = []
-        for project in projects:
-            parsed_projects.append(
-                ProjectAttribute(
-                    id=project.project_id,
-                    user_id=project.user_id,
-                    name=project.name,
-                    description=project.description,
-                    start_date=project.start_date,
-                    end_date=project.end_date,
-                    status=project.status,
-                )
+            user = prep_create(user_data, "user_id")
+            user = User.model_validate(user)
+            new_user = create(session, user)
+            log(
+                "CREATE_USERPROFILE",
+                f"Created user profile for {user_data.user_id}",
+                new_user.user_id,
+                session=session,
             )
-        return parsed_projects
+            return self._parse_user(new_user)
+
+        @self.patch(
+            "/{user_id}",
+            responses={
+                200: {
+                    "description": "Updated user profile successfully",
+                    "model": SingleSuccessResponse[UserResponse],
+                },
+                422: {"description": "Validation Error", "model": ErrorResponse},
+                500: {"description": "Server Error", "model": ErrorResponse},
+            },
+        )
+        def update_user(
+            user_id: uuid.UUID,
+            user_data: UserUpdate,
+            session: Session = Depends(get_session),
+        ):
+            updated_user = update(session, user_id, user_data, User)
+            log(
+                "UPDATE_USERPROFILE",
+                f"Updated user profile of {user_id}",
+                user_id,
+                session=session,
+            )
+            return self._parse_user(updated_user)
+
+        @self.delete(
+            "/{user_id}",
+            responses={
+                200: {
+                    "description": "User profile deleted",
+                    "model": SuccessResponse,
+                },
+                404: {"description": "User not found", "model": ErrorResponse},
+                500: {"description": "Server Error", "model": ErrorResponse},
+            },
+        )
+        def delete_user(
+            user_id: uuid.UUID,
+            session: Session = Depends(get_session),
+        ):
+            delete(session, user_id, User)
+            log(
+                "DELETE_USERPROFILE",
+                f"Deleted user profile of {user_id}",
+                user_id,
+                session=session,
+            )
+            return JSONResponse(
+                status_code=200, content=SuccessResponse(result="ok").model_dump_json()
+            )
 
     @staticmethod
     def _parse_user(
-        user: User, projects: Optional[List[ProjectAttribute]] = None
+        user: User, session: Optional[Session] = None
     ) -> SingleSuccessResponse[UserResponse]:
+        projects = None
+        if session:
+            projects = session.exec(
+                select(Project).where(Project.user_id == user.user_id).limit(5)
+            ).all()
+            projects = [
+                ProjectAttribute(
+                    id=p.project_id,
+                    user_id=p.user_id,
+                    name=p.name,
+                    description=p.description,
+                    start_date=p.start_date,
+                    end_date=p.end_date,
+                    status=p.status,
+                )
+                for p in projects
+            ]
+
         return SingleSuccessResponse[UserResponse](
             data=UserResponse(
                 id=user.user_id,

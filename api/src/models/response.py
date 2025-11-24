@@ -13,6 +13,10 @@ class BaseResponse(BaseModel):
     result: Literal["ok", "error"]
 
 
+class SuccessResponse(BaseResponse):
+    result: Literal["ok", "error"] = "ok"
+
+
 class SingleSuccessResponse(BaseResponse, Generic[T]):
     result: Literal["ok", "error"] = "ok"
     response: Literal["entity", "collection"] = "entity"
@@ -49,8 +53,8 @@ class ProjectAttribute(BaseModel):
     user_id: uuid.UUID = Field(...)
     name: str
     description: str
-    start_date: datetime.datetime
-    end_date: datetime.datetime
+    start_date: datetime.date
+    end_date: datetime.date
     status: Status
 
 
@@ -63,7 +67,7 @@ class TaskResponse(BaseModel):
     project_id: uuid.UUID = Field(...)
     name: str
     description: str
-    due_date: datetime.datetime
+    due_date: datetime.date
     status: Status
 
 
@@ -74,6 +78,7 @@ class MaterialResponse(BaseModel):
     qty_needed: int
     qty_acquired: int
     unit: str
+    project: ProjectAttribute
 
 
 class UserResponse(BaseModel):
@@ -81,3 +86,16 @@ class UserResponse(BaseModel):
     name: str
     email: EmailStr
     projects: List[ProjectAttribute] = []
+
+
+class ActivityLogResponse(BaseModel):
+
+    id: uuid.UUID = Field(...)
+    user_id: Optional[uuid.UUID] = None
+    project_id: Optional[uuid.UUID] = None
+    status_code: int = Field(default=200)
+    # allow logging of user changes(untied to anything really)
+    action_type: str
+    action_desc: str
+    details: Optional[str] = None
+    timestamp: datetime.datetime

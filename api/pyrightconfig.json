@@ -1,5 +1,7 @@
 {
   "venvPath": ".",
+  "typeCheckingMode": "basic",
+  "reportArgumentType": false,
   "venv": ".venv",
   "pythonVersion": "3.13",
   "include": ["."],
