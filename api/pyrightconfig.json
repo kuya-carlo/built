@@ -1,0 +1,17 @@
+{
+  "venvPath": ".",
+  "typeCheckingMode": "basic",
+  "reportArgumentType": false,
+  "venv": ".venv",
+  "pythonVersion": "3.13",
+  "include": ["."],
+  "extraPaths": ["."],
+  "exclude": [
+    "tests",
+    "**/__pycache__",
+    ".venv"
+  ],
+  "ignore": [
+    "tests/**"
+  ]
+}
