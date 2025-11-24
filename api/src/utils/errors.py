@@ -1,40 +1,88 @@
 import json
 
 from fastapi import Request
-from fastapi.exceptions import RequestValidationError
+from fastapi.exceptions import HTTPException, RequestValidationError
+from sqlmodel import Session
 from starlette.responses import JSONResponse
 
 from src.models import ErrorDescription, ErrorResponse
+from src.models.database import engine
+
+from .common import log
 
 
 def error_response(errors, status: int = 500) -> JSONResponse:
-    errorpart = []
-    for err in errors:
-        errorpart.append(
-            ErrorDescription(
-                status=err["status"] if "status" in err else status,
-                title=err["title"],
-                detail=err["detail"],
-            )
+    def get_errordesc(err: dict) -> ErrorDescription:
+        return ErrorDescription(
+            status=err.get("status", status),
+            title=err.get("title", "Error"),
+            detail=err.get("detail", "An error occurred"),
         )
+
     error = ErrorResponse(
         result="error",
-        errors=errorpart,
+        errors=[get_errordesc(err) for err in errors],
     )
     return JSONResponse(status_code=status, content=json.loads(error.model_dump_json()))
 
 
-async def validation_exception_handler(request: Request, exc: Exception):
+async def error_handler(request: Request, exc: Exception):
+    user_id_from_request = getattr(request.state, "user_id", None)
+    log_details = {}
     if isinstance(exc, RequestValidationError):
+        status = 422
+        title = "Validation Error"
         errors = []
+        detail = "RequestValidationError: "
         for err in exc.errors():
+            error_location = f"{'.'.join(str(loc) for loc in err['loc'])}"  # basically like (core, body) into core.body
+            error_message = f"{error_location}: {err['msg']}"
             errors.append(
                 {
                     "status": 422,
-                    "title": "Validation Error",
-                    "detail": f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}",
+                    "title": title,
+                    "detail": error_message,
                 }
             )
-        return error_response(errors, 422)
+            detail += f"[{error_message}] "
+
+        final_response = error_response(errors, 422)
+    elif isinstance(exc, HTTPException):
+        status = exc.status_code
+        title = "Error"
+        detail = exc.detail
+        final_response = error_response(
+            [
+                {
+                    "status": status,
+                    "title": title,
+                    "detail": detail,
+                }
+            ],
+            status,
+        )
     else:
-        return error_response([{"title": "Validation error", "detail": str(exc)}], 422)
+        status = 500
+        title = "Internal Server Error"
+        detail = "An unhandled critical error occurred."
+        final_response = error_response(
+            [{"status": status, "title": title, "detail": str(exc)}], 500
+        )
+        log_details = {
+            "path": str(request.url),
+            "method": request.method,
+            "error_class": exc.__class__.__name__,
+        }
+
+    if status >= 400:  # if errored fr
+        with Session(engine) as session:  # Manually create a session for logging
+            log(
+                session=session,
+                action="API_CALL_FAIL",  # New generalized action type for failed API calls
+                code=status,
+                message=f"{title}: {detail}",
+                user_id=user_id_from_request,
+                details=str(log_details),
+            )
+
+    return final_response

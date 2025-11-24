@@ -3,8 +3,7 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine, inspect
 from sqlmodel import Session, SQLModel
 
-from src.models import User
-from src.models.database import init_db
+from src.models.database import User, init_db
 
 
 class TestInitDB:
@@ -52,10 +51,12 @@ class TestInitDB:
 
             with Session(test_engine) as session:
                 user_id = uuid.uuid4()
-                user = User(user_id=user_id, name="Test", email="test@example.com")
+                user = User(
+                    user_id=user_id, name="Test", email="test@example.com"
+                )  # Changed from Project to User
                 session.add(user)
                 session.commit()
 
-                retrieved = session.get(User, user_id)
+                retrieved = session.get(User, user_id)  # Changed from Project to User
                 assert retrieved is not None
                 assert retrieved.name == "Test"

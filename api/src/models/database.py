@@ -43,11 +43,16 @@ class ActivityLog(SQLModel, table=True):
     """
 
     activity_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="user.user_id")
-    project_id: uuid.UUID = Field(foreign_key="project.project_id")
+    user_id: Optional[uuid.UUID] = Field(foreign_key="user.user_id")
+    project_id: Optional[uuid.UUID] = Field(foreign_key="project.project_id")
+    status_code: int = Field(default=200)
+    # allow logging of user changes(untied to anything really)
     action_type: str
     action_desc: str
-    timestamp: datetime.datetime
+    details: Optional[str] = None
+    timestamp: datetime.datetime = Field(
+        default_factory=datetime.datetime.now, index=True
+    )
 
     user: Optional[User] = Relationship(back_populates="activity_logs")
     project: Optional["Project"] = Relationship(back_populates="activity_logs")
@@ -81,11 +86,11 @@ class Project(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="user.user_id")
     name: str
     description: str
-    start_date: datetime.datetime
-    end_date: datetime.datetime
+    start_date: datetime.date
+    end_date: datetime.date
     status: Status
 
-    user: "User" = Relationship(back_populates="projects")
+    user: User = Relationship(back_populates="projects")
     activity_logs: Optional[list["ActivityLog"]] = Relationship(
         back_populates="project"
     )
@@ -111,7 +116,7 @@ class Tasks(SQLModel, table=True):
     project_id: uuid.UUID = Field(foreign_key="project.project_id")
     name: str
     description: str
-    due_date: datetime.datetime
+    due_date: datetime.date
     status: Status
 
     project: Optional[Project] = Relationship(back_populates="tasks")

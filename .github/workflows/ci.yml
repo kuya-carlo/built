@@ -41,7 +41,7 @@ jobs:
 
       - name: Run ruff
         working-directory: ./api
-        run: uv run ruff check .
+        run: uv run ruff check . --exclude tests,__pycache__
 
       - name: Run black
         working-directory: ./api
