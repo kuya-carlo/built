@@ -14,7 +14,7 @@ repos:
     rev: v0.14.0
     hooks:
       - id: ruff
-        args: ["--fix","--exclude", "api/tests"]
+        args: ["--fix", "--exclude", "api/tests"]
         files: ^api/
 
   - repo: https://github.com/psf/black-pre-commit-mirror

@@ -57,3 +57,4 @@ skip_covered = false
 
 [tool.coverage.html]
 directory = "htmlcov"
+

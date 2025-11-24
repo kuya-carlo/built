@@ -90,7 +90,7 @@ class UserResponse(BaseModel):
 
 class ActivityLogResponse(BaseModel):
 
-    id: uuid.UUID = Field(...)
+    activity_id: uuid.UUID = Field(...)
     user_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
     status_code: int = Field(default=200)

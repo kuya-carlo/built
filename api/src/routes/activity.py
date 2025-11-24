@@ -7,7 +7,6 @@ from src.models import (
     ActivityLog,
     ActivityLogResponse,
     ErrorResponse,
-    ProjectResponse,
     SingleSuccessResponse,
     get_session,
 )
@@ -27,7 +26,7 @@ class ActivityLogRouter(APIRouter):
             responses={
                 200: {
                     "description": "ActivityLog exists",
-                    "model": SingleSuccessResponse[ProjectResponse],
+                    "model": SingleSuccessResponse[ActivityLogResponse],
                 },
                 404: {"description": "ActivityLog not found", "model": ErrorResponse},
                 500: {"description": "Server Error", "model": ErrorResponse},
@@ -47,8 +46,8 @@ class ActivityLogRouter(APIRouter):
     @staticmethod
     def _parse_activity_log(
         activity_log: ActivityLog,
-    ) -> SingleSuccessResponse[ProjectResponse]:
+    ) -> SingleSuccessResponse[ActivityLogResponse]:
         cleaned = prep_create(activity_log, "user_id", "project_id")
-        return SingleSuccessResponse[ProjectResponse](
+        return SingleSuccessResponse[ActivityLogResponse](
             data=ActivityLogResponse(**cleaned)
         )
