@@ -15,7 +15,7 @@ class TestMainApp:
     def test_app_initialization(self):
         """Test that the app is properly initialized"""
         assert app is not None
-        assert app.title == "FastAPI"
+        assert app.title == "Built Cost Management API"
 
     def test_lifespan_init_db_called(self):
         """Test that init_db is called during lifespan startup"""
