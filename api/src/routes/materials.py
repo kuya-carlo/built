@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ from starlette.responses import JSONResponse
 
 from src.models import (
     ErrorResponse,
+    GroupSuccessResponse,
     MaterialResponse,
     Materials,
     Project,
@@ -15,9 +16,10 @@ from src.models import (
     ProjectResponse,
     SingleSuccessResponse,
     SuccessResponse,
-    get_session,
 )
-from src.utils import create, delete, log, prep_create, read, update
+from src.models.response import MaterialSummary
+from src.utils import create, delete, get_session, log, prep_create, read, update
+from src.utils.helper import FilterMode, db_filter
 
 
 class MaterialCreate(BaseModel):
@@ -82,7 +84,7 @@ class MaterialRouter(APIRouter):
             log(
                 "GET_MATERIAL",
                 f"Got material info for {material_id}",
-                session,
+                session=session,
             )
             return self._parse_material(material, session)
 
@@ -108,8 +110,7 @@ class MaterialRouter(APIRouter):
             log(
                 "CREATE_MATERIAL",
                 f"Created material with id of {new_material.material_id}",
-                new_material.material_id,
-                session,
+                session=session,
             )
             return self._parse_material(new_material, session)
 
@@ -133,8 +134,7 @@ class MaterialRouter(APIRouter):
             log(
                 "UPDATE_MATERIAL",
                 f"Updated material with id {material_id}",
-                material_id,
-                session,
+                session=session,
             )
             return self._parse_material(updated_material, session)
 
@@ -157,19 +157,63 @@ class MaterialRouter(APIRouter):
             log(
                 "DELETE_MATERIAL",
                 f"Deleted material with id {material_id}",
-                material_id,
-                session,
+                session=session,
             )
             return JSONResponse(
                 status_code=200, content=SuccessResponse(result="ok").model_dump_json()
             )
 
+        @self.get(
+            "/",
+            responses={
+                200: {
+                    "description": "Successfully got materials",
+                    "model": GroupSuccessResponse[MaterialSummary],
+                },
+                404: {
+                    "description": "Material for the project not found",
+                    "model": ErrorResponse,
+                },
+                500: {"description": "Server Error", "model": ErrorResponse},
+            },
+        )
+        def list_materials(
+            project_id: uuid.UUID,
+            limit: int = 5,
+            offset: int = 0,
+            session: Session = Depends(get_session),
+        ):
+            materials = db_filter(
+                session,
+                Materials,
+                project_id,
+                Materials.project_id,
+                Materials.name,
+                FilterMode.ALL,
+                limit,
+                offset,
+            )
+            if not materials:
+                log(
+                    "LIST_MATERIALS",
+                    f"Listed materials from project {project_id}",
+                    code=404,
+                    session=session,
+                )
+                raise ValueError(f"Materials with project id {project_id} not found")
+            log(
+                "LIST_PROJECT",
+                f"Listed materials from project {project_id}",
+                session=session,
+            )
+            return self._parse_materials(materials)
+
     @staticmethod
     def _parse_material(
-        material: Materials, session: Optional[Session] = None
+        material: Materials, session: Optional[Session] = None, add_proj_summary=False
     ) -> SingleSuccessResponse[MaterialResponse]:
         project_summary = None
-        if session:
+        if bool(session) and add_proj_summary:
             project_obj = read(session, material.project_id, Project)
             if project_obj:
                 # Convert User to UserSummary
@@ -181,6 +225,7 @@ class MaterialRouter(APIRouter):
                     start_date=project_obj.start_date,
                     end_date=project_obj.end_date,
                     status=project_obj.status,
+                    total_budget=project_obj.total_budget,
                 )
 
         return SingleSuccessResponse[MaterialResponse](
@@ -193,4 +238,22 @@ class MaterialRouter(APIRouter):
                 unit=material.unit,
                 project=project_summary,
             )
+        )
+
+    @staticmethod
+    def _parse_materials(
+        materials: List[Materials],
+    ) -> GroupSuccessResponse[MaterialSummary]:
+        return GroupSuccessResponse(
+            data=[
+                MaterialSummary(
+                    id=material.material_id,
+                    name=material.name,
+                    project_id=material.project_id,
+                    qty_needed=material.qty_needed,
+                    qty_acquired=material.qty_acquired,
+                    unit=material.unit,
+                )
+                for material in materials
+            ]
         )

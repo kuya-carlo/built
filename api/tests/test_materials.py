@@ -9,9 +9,10 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from src.models import Status, get_session
+from src.models import Status
 from src.models.database import Materials, Project, User
 from src.routes.materials import MaterialRouter
+from src.utils import get_session
 
 
 @pytest.fixture(name="session")

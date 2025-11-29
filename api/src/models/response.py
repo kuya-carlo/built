@@ -2,7 +2,7 @@ import datetime
 import uuid
 from typing import Generic, List, Literal, Optional, TypeVar
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from .database import Status
 
@@ -44,6 +44,7 @@ class ErrorDescription(BaseModel):
 
 class UserSummary(BaseModel):
     id: uuid.UUID
+    username: str
     name: str
     email: EmailStr
 
@@ -55,6 +56,7 @@ class ProjectAttribute(BaseModel):
     description: str
     start_date: datetime.date
     end_date: datetime.date
+    total_budget: float
     status: Status
 
 
@@ -71,25 +73,30 @@ class TaskResponse(BaseModel):
     status: Status
 
 
-class MaterialResponse(BaseModel):
+class MaterialSummary(BaseModel):
     id: uuid.UUID = Field(...)
     project_id: uuid.UUID = Field(...)
     name: str
     qty_needed: int
     qty_acquired: int
     unit: str
+
+
+class MaterialResponse(MaterialSummary):
     project: ProjectAttribute
 
 
 class UserResponse(BaseModel):
     id: uuid.UUID = Field(...)
+    username: str
     name: str
     email: EmailStr
+    is_active: bool
     projects: List[ProjectAttribute] = []
 
 
 class ActivityLogResponse(BaseModel):
-
+    # totally a mess
     activity_id: uuid.UUID = Field(...)
     user_id: Optional[uuid.UUID] = None
     project_id: Optional[uuid.UUID] = None
@@ -99,3 +106,22 @@ class ActivityLogResponse(BaseModel):
     action_desc: str
     details: Optional[str] = None
     timestamp: datetime.datetime
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def parse_timestamp(cls, value):
+        if isinstance(value, str):
+            # Convert "2025-11-28 23:41:24.659913" to ISO format
+            return value.replace(" ", "T")
+        return value
+
+
+class LoginToken(BaseModel):
+    access_token: str
+    response_type: Literal["Bearer"] = "Bearer"
+
+
+class TokenData(BaseModel):
+    user_id: Optional[uuid.UUID] = None
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None

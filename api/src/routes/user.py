@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
 from starlette.responses import JSONResponse
@@ -12,11 +13,12 @@ from src.models import (
     ProjectAttribute,
     SingleSuccessResponse,
     SuccessResponse,
-    User,
     UserResponse,
-    get_session,
+    Users,
 )
-from src.utils import create, delete, log, prep_create, read, update
+from src.utils import create, delete, get_session, log, prep_create, read, update
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 class UserCreate(BaseModel):
@@ -32,8 +34,10 @@ class UserUpdate(BaseModel):
     model_config = {
         "json_schema_extra": {"example": {"name": "John", "email": "john@example.com"}}
     }
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
+
+
+name: Optional[str] = None
+email: Optional[EmailStr] = None
 
 
 class UserRouter(APIRouter):
@@ -54,7 +58,7 @@ class UserRouter(APIRouter):
             },
         )
         def get_user(user_id: uuid.UUID, session: Session = Depends(get_session)):
-            user = read(session, user_id, User)
+            user = read(session, user_id, Users)
             log(
                 session=session,
                 action="GET_USERPROFILE",
@@ -80,7 +84,7 @@ class UserRouter(APIRouter):
             session: Session = Depends(get_session),
         ):
             user = prep_create(user_data, "user_id")
-            user = User.model_validate(user)
+            user = Users.model_validate(user)
             new_user = create(session, user)
             log(
                 "CREATE_USERPROFILE",
@@ -106,7 +110,7 @@ class UserRouter(APIRouter):
             user_data: UserUpdate,
             session: Session = Depends(get_session),
         ):
-            updated_user = update(session, user_id, user_data, User)
+            updated_user = update(session, user_id, user_data, Users)
             log(
                 "UPDATE_USERPROFILE",
                 f"Updated user profile of {user_id}",
@@ -130,7 +134,7 @@ class UserRouter(APIRouter):
             user_id: uuid.UUID,
             session: Session = Depends(get_session),
         ):
-            delete(session, user_id, User)
+            delete(session, user_id, Users)
             log(
                 "DELETE_USERPROFILE",
                 f"Deleted user profile of {user_id}",
@@ -143,7 +147,7 @@ class UserRouter(APIRouter):
 
     @staticmethod
     def _parse_user(
-        user: User, session: Optional[Session] = None
+        user: Users, session: Optional[Session] = None
     ) -> SingleSuccessResponse[UserResponse]:
         projects = None
         if session:
@@ -159,6 +163,7 @@ class UserRouter(APIRouter):
                     start_date=p.start_date,
                     end_date=p.end_date,
                     status=p.status,
+                    total_budget=p.total_budget,
                 )
                 for p in projects
             ]
@@ -166,8 +171,10 @@ class UserRouter(APIRouter):
         return SingleSuccessResponse[UserResponse](
             data=UserResponse(
                 id=user.user_id,
+                username=user.username,
                 name=user.name,
                 email=user.email,
+                is_active=user.is_active,
                 projects=projects if projects else [],
             )
         )
