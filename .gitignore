@@ -17,3 +17,6 @@ coverage.xml
 # app database
 *.db
 .env
+
+# app runtime files
+*.pem

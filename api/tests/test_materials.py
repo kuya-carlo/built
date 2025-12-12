@@ -10,7 +10,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
 from src.models import Status
-from src.models.database import Materials, Project, User
+from src.models.database import Materials, Project, Users
 from src.routes.materials import MaterialRouter
 from src.utils import get_session
 
@@ -25,6 +25,7 @@ def session_fixture() -> Generator[Session, None, None]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+    engine.dispose()
 
 
 @pytest.fixture(name="client")
@@ -41,8 +42,13 @@ def client_fixture(session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture(name="sample_user")
-def sample_user_fixture(session: Session) -> User:
-    user = User(user_id=uuid.uuid4(), name="Test User", email="test@example.com")
+def sample_user_fixture(session: Session) -> Users:
+    user = Users(
+        user_id=uuid.uuid4(),
+        username="testuser",
+        name="Test Users",
+        email="test@example.com",
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -50,7 +56,7 @@ def sample_user_fixture(session: Session) -> User:
 
 
 @pytest.fixture(name="sample_project")
-def sample_project_fixture(session: Session, sample_user: User) -> Project:
+def sample_project_fixture(session: Session, sample_user: Users) -> Project:
     project = Project(
         project_id=uuid.uuid4(),
         user_id=sample_user.user_id,

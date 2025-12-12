@@ -6,13 +6,22 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
-from src.utils.errors import error_handler, error_response
+from src.utils import error_handler, error_response
+
+
+@pytest.fixture(autouse=True)
+def mock_logger(mocker):
+    """
+    Automatically patches the log function to prevent database write errors
+    when running tests that mock the request state (like error tests).
+    """
+    mocker.patch("src.utils.errors.log")
 
 
 class TestErrorResponse:
     def test_single_error(self):
         """Test error_response with a single error"""
-        errors = [{"status": 404, "title": "Not Found", "detail": "User not found"}]
+        errors = [{"status": 404, "title": "Not Found", "detail": "Users not found"}]
 
         response = error_response(errors, 404)
 
@@ -22,7 +31,7 @@ class TestErrorResponse:
         assert len(data["errors"]) == 1
         assert data["errors"][0]["status"] == 404
         assert data["errors"][0]["title"] == "Not Found"
-        assert data["errors"][0]["detail"] == "User not found"
+        assert data["errors"][0]["detail"] == "Users not found"
 
     def test_multiple_errors(self):
         """Test error_response with multiple errors"""

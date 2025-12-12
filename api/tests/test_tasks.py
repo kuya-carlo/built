@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from src.models.database import Project, Status, Tasks, User
+from src.models.database import Project, Status, Tasks, Users
 from src.routes.task import TaskRouter
 from src.utils import get_session
 
@@ -25,6 +25,7 @@ def session_fixture() -> Generator[Session, None, None]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+    engine.dispose()
 
 
 @pytest.fixture(name="client")
@@ -44,9 +45,14 @@ def client_fixture(session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture(name="sample_user")
-def sample_user_fixture(session: Session) -> User:
+def sample_user_fixture(session: Session) -> Users:
     """Create a sample user in the database."""
-    user = User(user_id=uuid.uuid4(), name="Test User", email="test@example.com")
+    user = Users(
+        user_id=uuid.uuid4(),
+        username="testuser",
+        name="Test Users",
+        email="test@example.com",
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -54,7 +60,7 @@ def sample_user_fixture(session: Session) -> User:
 
 
 @pytest.fixture(name="sample_project")
-def sample_project_fixture(session: Session, sample_user: User) -> Project:
+def sample_project_fixture(session: Session, sample_user: Users) -> Project:
     """Create a sample project for the user."""
     project = Project(
         project_id=uuid.uuid4(),

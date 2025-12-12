@@ -83,7 +83,7 @@ class MaterialSummary(BaseModel):
 
 
 class MaterialResponse(MaterialSummary):
-    project: ProjectAttribute
+    project: Optional[ProjectAttribute] = None
 
 
 class UserResponse(BaseModel):

@@ -1,0 +1,1 @@
+select user_id from user where name == 'John Carlo Santos' limit 1

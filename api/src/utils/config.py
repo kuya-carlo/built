@@ -1,19 +1,21 @@
 # api/src/utils/config.py
 import json
 import os
+from pathlib import Path
 from typing import List
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
-# Load from root .env file - add explicit loading
-env_path = os.path.join(os.path.dirname(__file__), "../../../.env")
-if os.path.exists(env_path):
-    from dotenv import load_dotenv
 
-    load_dotenv(env_path)
-else:
-    raise FileNotFoundError(f"ENV file {env_path} not found. Exiting.")
+def load_env():
+    env_path = os.path.join(os.path.dirname(__file__), "../../../.env")
+    if os.path.exists(env_path):
+        from dotenv import load_dotenv
+
+        load_dotenv(env_path)
+    else:
+        raise FileNotFoundError(f"ENV file {env_path} not found. Exiting.")
 
 
 class Settings(BaseSettings):
@@ -51,12 +53,11 @@ class Settings(BaseSettings):
                 return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,  # Allows case-insensitive env vars
-        "extra": "ignore",  # Ignore extra environment variables
-    }
+    class Config:
+        env_file = Path(__file__).parent.parent.parent.parent / ".env"
+        extra = "ignore"
+        case_sensitive = False
+        env_file_encoding = "utf-8"
 
 
 settings = Settings()
@@ -65,6 +66,7 @@ settings = Settings()
 if __name__ == "__main__":
     print("=== Settings Load Test ===")
     print(f"Database: {settings.database_url}")
+    print(f"Secret Key: {settings.secret_key}")
     print(f"CORS Origins: {settings.backend_cors_origins}")
     print(f"Project: {settings.project_name}")
     print(f"Debug: {settings.debug}")

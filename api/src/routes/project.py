@@ -44,7 +44,7 @@ class ProjectCreate(BaseModel):
     description: str
     start_date: datetime.date
     end_date: datetime.date
-    total_budget: float
+    total_budget: float = 0.0
     status: Status
 
 

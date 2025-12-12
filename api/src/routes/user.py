@@ -27,6 +27,7 @@ class UserCreate(BaseModel):
     }
     name: str
     email: EmailStr
+    username: str
     user_id: Optional[uuid.UUID] = None
 
 
@@ -35,9 +36,8 @@ class UserUpdate(BaseModel):
         "json_schema_extra": {"example": {"name": "John", "email": "john@example.com"}}
     }
 
-
-name: Optional[str] = None
-email: Optional[EmailStr] = None
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 class UserRouter(APIRouter):
@@ -114,7 +114,7 @@ class UserRouter(APIRouter):
             log(
                 "UPDATE_USERPROFILE",
                 f"Updated user profile of {user_id}",
-                user_id,
+                user_id=user_id,
                 session=session,
             )
             return self._parse_user(updated_user)

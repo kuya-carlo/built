@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from src.models.database import Project, Status, User
+from src.models.database import Project, Status, Users
 from src.routes.project import ProjectRouter
 from src.utils import get_session
 
@@ -25,6 +25,7 @@ def session_fixture() -> Generator[Session, None, None]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+    engine.dispose()
 
 
 @pytest.fixture(name="client")
@@ -44,9 +45,14 @@ def client_fixture(session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture(name="sample_user")
-def sample_user_fixture(session: Session) -> User:
+def sample_user_fixture(session: Session) -> Users:
     """Create a sample user in the database."""
-    user = User(user_id=uuid.uuid4(), name="Test User", email="test@example.com")
+    user = Users(
+        user_id=uuid.uuid4(),
+        username="testuser",
+        name="Test Users",
+        email="test@example.com",
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -54,7 +60,7 @@ def sample_user_fixture(session: Session) -> User:
 
 
 @pytest.fixture(name="sample_project")
-def sample_project_fixture(session: Session, sample_user: User) -> Project:
+def sample_project_fixture(session: Session, sample_user: Users) -> Project:
     """Create a sample project for the user."""
     project = Project(
         project_id=uuid.uuid4(),
@@ -75,7 +81,7 @@ class TestGetProject:
     """Tests for GET /project/{project_id} endpoint."""
 
     def test_get_existing_project(
-        self, client: TestClient, sample_project: Project, sample_user: User
+        self, client: TestClient, sample_project: Project, sample_user: Users
     ):
         """Test retrieving an existing project."""
         response = client.get(f"/project/{sample_project.project_id}")
@@ -103,7 +109,7 @@ class TestGetProject:
 class TestCreateProject:
     """Tests for POST /project/ endpoint."""
 
-    def test_create_project_success(self, client: TestClient, sample_user: User):
+    def test_create_project_success(self, client: TestClient, sample_user: Users):
         """Test creating a new project successfully."""
         project_data = {
             "user_id": str(sample_user.user_id),
@@ -121,7 +127,9 @@ class TestCreateProject:
         assert data["data"]["user_id"] == project_data["user_id"]
         assert data["data"]["owner"]["id"] == project_data["user_id"]
 
-    def test_create_project_with_custom_id(self, client: TestClient, sample_user: User):
+    def test_create_project_with_custom_id(
+        self, client: TestClient, sample_user: Users
+    ):
         """Test creating a project with a custom project_id."""
         custom_id = uuid.uuid4()
         project_data = {
@@ -175,7 +183,9 @@ class TestCreateProject:
         response = client.post("/project/", json=project_data)
         assert response.status_code == 409
 
-    def test_create_project_invalid_status(self, client: TestClient, sample_user: User):
+    def test_create_project_invalid_status(
+        self, client: TestClient, sample_user: Users
+    ):
         """Test creating a project with invalid status."""
         project_data = {
             "user_id": str(sample_user.user_id),
@@ -189,7 +199,7 @@ class TestCreateProject:
         assert response.status_code == 422
 
     def test_create_project_invalid_date_format(
-        self, client: TestClient, sample_user: User
+        self, client: TestClient, sample_user: Users
     ):
         """Test creating a project with invalid date format."""
         project_data = {
@@ -335,7 +345,7 @@ class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
     def test_create_project_with_extremely_long_name(
-        self, client: TestClient, sample_user: User
+        self, client: TestClient, sample_user: Users
     ):
         """Test creating project with very long name."""
         project_data = {
@@ -351,7 +361,7 @@ class TestEdgeCases:
         assert response.status_code in [200, 422]
 
     def test_create_project_with_special_characters(
-        self, client: TestClient, sample_user: User
+        self, client: TestClient, sample_user: Users
     ):
         """Test creating project with special characters in name."""
         project_data = {
@@ -367,7 +377,7 @@ class TestEdgeCases:
         assert response.status_code in [200, 422, 500]
 
     def test_create_project_end_before_start(
-        self, client: TestClient, sample_user: User
+        self, client: TestClient, sample_user: Users
     ):
         """Test creating project where end_date is before start_date."""
         from datetime import timedelta
@@ -386,7 +396,7 @@ class TestEdgeCases:
         # Depends on your validation - might be accepted or rejected
         assert response.status_code in [200, 422]
 
-    def test_concurrent_project_creation(self, client: TestClient, sample_user: User):
+    def test_concurrent_project_creation(self, client: TestClient, sample_user: Users):
         """Test creating multiple projects simultaneously."""
         projects = [
             {
@@ -406,7 +416,7 @@ class TestEdgeCases:
         assert all(r.status_code in [200, 422, 500] for r in responses)
 
     def test_get_project_with_all_status_types(
-        self, client: TestClient, session: Session, sample_user: User
+        self, client: TestClient, session: Session, sample_user: Users
     ):
         """Test that projects can be created and retrieved with all status types."""
         for status in Status:

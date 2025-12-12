@@ -13,7 +13,6 @@ from src.models import (
     Materials,
     Project,
     ProjectAttribute,
-    ProjectResponse,
     SingleSuccessResponse,
     SuccessResponse,
 )
@@ -71,7 +70,7 @@ class MaterialRouter(APIRouter):
             responses={
                 200: {
                     "description": "Materials exists",
-                    "model": SingleSuccessResponse[ProjectResponse],
+                    "model": SingleSuccessResponse[MaterialResponse],
                 },
                 404: {"description": "Materials not found", "model": ErrorResponse},
                 500: {"description": "Server Error", "model": ErrorResponse},
@@ -93,7 +92,7 @@ class MaterialRouter(APIRouter):
             responses={
                 200: {
                     "description": "Materials created",
-                    "model": SingleSuccessResponse[ProjectResponse],
+                    "model": SingleSuccessResponse[MaterialResponse],
                 },
                 409: {"description": "Conflict", "model": ErrorResponse},
                 422: {"description": "Validation Error", "model": ErrorResponse},
@@ -119,7 +118,7 @@ class MaterialRouter(APIRouter):
             responses={
                 200: {
                     "description": "Updated material successfully",
-                    "model": SingleSuccessResponse[ProjectResponse],
+                    "model": SingleSuccessResponse[MaterialResponse],
                 },
                 422: {"description": "Validation Error", "model": ErrorResponse},
                 500: {"description": "Server Error", "model": ErrorResponse},

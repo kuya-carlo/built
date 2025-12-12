@@ -5,6 +5,7 @@ from fastapi import HTTPException as HTTPExcept
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi_offline import FastAPIOffline
 from starlette.exceptions import HTTPException
 
 from src.routes import (
@@ -32,7 +33,7 @@ activity_router = ActivityLogRouter()
 task_router = TaskRouter()
 auth_service = AuthService()
 
-app = FastAPI(lifespan=lifespan, title=settings.project_title)
+app = FastAPIOffline(lifespan=lifespan, title=settings.project_title)
 app.add_exception_handler(RequestValidationError, error_handler)
 app.add_exception_handler(HTTPExcept, error_handler)
 app.add_exception_handler(HTTPException, error_handler)

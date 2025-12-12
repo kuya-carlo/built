@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from src.models.database import Project, Status, User
+from src.models.database import Project, Status, Users
 from src.routes.user import UserRouter
 from src.utils import get_session
 
@@ -25,6 +25,7 @@ def session_fixture() -> Generator[Session, None, None]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+    engine.dispose()
 
 
 @pytest.fixture(name="client")
@@ -44,9 +45,14 @@ def client_fixture(session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture(name="sample_user")
-def sample_user_fixture(session: Session) -> User:
+def sample_user_fixture(session: Session) -> Users:
     """Create a sample user in the database."""
-    user = User(user_id=uuid.uuid4(), name="Test User", email="test@example.com")
+    user = Users(
+        user_id=uuid.uuid4(),
+        username="testuser",
+        name="Test Users",
+        email="test@example.com",
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -54,7 +60,7 @@ def sample_user_fixture(session: Session) -> User:
 
 
 @pytest.fixture(name="sample_project")
-def sample_project_fixture(session: Session, sample_user: User) -> Project:
+def sample_project_fixture(session: Session, sample_user: Users) -> Project:
     """Create a sample project for the user."""
     project = Project(
         project_id=uuid.uuid4(),
@@ -74,7 +80,7 @@ def sample_project_fixture(session: Session, sample_user: User) -> Project:
 class TestGetUser:
     """Tests for GET /user/{user_id} endpoint."""
 
-    def test_get_existing_user(self, client: TestClient, sample_user: User):
+    def test_get_existing_user(self, client: TestClient, sample_user: Users):
         """Test retrieving an existing user."""
         response = client.get(f"/user/{sample_user.user_id}")
         assert response.status_code == 200
@@ -84,7 +90,7 @@ class TestGetUser:
         assert data["data"]["email"] == sample_user.email
 
     def test_get_user_with_projects(
-        self, client: TestClient, sample_user: User, sample_project: Project
+        self, client: TestClient, sample_user: Users, sample_project: Project
     ):
         """Test retrieving a user with associated projects."""
         response = client.get(f"/user/{sample_user.user_id}")
@@ -112,8 +118,9 @@ class TestCreateUser:
         """Test creating a new user successfully."""
         user_id = uuid.uuid4()
         user_data = {
-            "name": "New User",
+            "name": "New Users",
             "email": "newuser@example.com",
+            "username": "testuser",
             "user_id": str(user_id),
         }
         response = client.post("/user/", json=user_data)
@@ -127,8 +134,9 @@ class TestCreateUser:
         """Test creating a user with a custom user_id."""
         custom_id = uuid.uuid4()
         user_data = {
-            "name": "Custom ID User",
+            "name": "Custom ID Users",
             "email": "custom@example.com",
+            "username": "testuser",
             "user_id": str(custom_id),
         }
         response = client.post("/user/", json=user_data)
@@ -138,20 +146,20 @@ class TestCreateUser:
 
     def test_create_user_missing_required_fields(self, client: TestClient):
         """Test creating a user without required fields."""
-        user_data = {"name": "Incomplete User"}
+        user_data = {"name": "Incomplete Users"}
         response = client.post("/user/", json=user_data)
         assert response.status_code == 422
 
     def test_create_user_invalid_email(self, client: TestClient):
         """Test creating a user with invalid email format.
 
-        Note: The validation happens during User.model_validate() which raises
+        Note: The validation happens during Users.model_validate() which raises
         a ValidationError that isn't caught by FastAPI's normal validation,
         so it returns a 500 error instead of 422.
         """
         user_id = uuid.uuid4()
         user_data = {
-            "name": "Bad Email User",
+            "name": "Bad Email Users",
             "email": "not-an-email",
             "user_id": str(user_id),
         }
@@ -162,11 +170,12 @@ class TestCreateUser:
         # Verify it's actually an email validation error
         assert "email" in response.text.lower() or "validation" in response.text.lower()
 
-    def test_create_duplicate_user(self, client: TestClient, sample_user: User):
+    def test_create_duplicate_user(self, client: TestClient, sample_user: Users):
         """Test creating a user with duplicate information."""
         user_data = {
             "name": sample_user.name,
             "email": sample_user.email,
+            "username": sample_user.username,
             "user_id": str(sample_user.user_id),
         }
         response = client.post("/user/", json=user_data)
@@ -176,7 +185,7 @@ class TestCreateUser:
 class TestUpdateUser:
     """Tests for PATCH /user/{user_id} endpoint."""
 
-    def test_update_user_name(self, client: TestClient, sample_user: User):
+    def test_update_user_name(self, client: TestClient, sample_user: Users):
         """Test updating a user's name."""
         update_data = {"name": "Updated Name"}
         response = client.patch(f"/user/{sample_user.user_id}", json=update_data)
@@ -185,7 +194,7 @@ class TestUpdateUser:
         assert data["data"]["name"] == "Updated Name"
         assert data["data"]["email"] == sample_user.email
 
-    def test_update_user_email(self, client: TestClient, sample_user: User):
+    def test_update_user_email(self, client: TestClient, sample_user: Users):
         """Test updating a user's email."""
         update_data = {"email": "updated@example.com"}
         response = client.patch(f"/user/{sample_user.user_id}", json=update_data)
@@ -194,7 +203,7 @@ class TestUpdateUser:
         assert data["data"]["email"] == "updated@example.com"
         assert data["data"]["name"] == sample_user.name
 
-    def test_update_user_both_fields(self, client: TestClient, sample_user: User):
+    def test_update_user_both_fields(self, client: TestClient, sample_user: Users):
         """Test updating both name and email."""
         update_data = {"name": "New Name", "email": "newemail@example.com"}
         response = client.patch(f"/user/{sample_user.user_id}", json=update_data)
@@ -206,17 +215,17 @@ class TestUpdateUser:
     def test_update_nonexistent_user(self, client: TestClient):
         """Test updating a user that doesn't exist."""
         fake_id = uuid.uuid4()
-        update_data = {"name": "Ghost User"}
+        update_data = {"name": "Ghost Users"}
         response = client.patch(f"/user/{fake_id}", json=update_data)
         assert response.status_code in [404, 500]
 
-    def test_update_user_invalid_email(self, client: TestClient, sample_user: User):
+    def test_update_user_invalid_email(self, client: TestClient, sample_user: Users):
         """Test updating with invalid email format."""
         update_data = {"email": "invalid-email"}
         response = client.patch(f"/user/{sample_user.user_id}", json=update_data)
         assert response.status_code == 422
 
-    def test_update_user_empty_payload(self, client: TestClient, sample_user: User):
+    def test_update_user_empty_payload(self, client: TestClient, sample_user: Users):
         """Test updating with no changes."""
         response = client.patch(f"/user/{sample_user.user_id}", json={})
         assert response.status_code == 200
@@ -228,7 +237,7 @@ class TestUpdateUser:
 class TestDeleteUser:
     """Tests for DELETE /user/{user_id} endpoint."""
 
-    def test_delete_existing_user(self, client: TestClient, sample_user: User):
+    def test_delete_existing_user(self, client: TestClient, sample_user: Users):
         """Test deleting an existing user."""
         response = client.delete(f"/user/{sample_user.user_id}")
         assert response.status_code == 200
@@ -272,6 +281,7 @@ class TestEdgeCases:
         user_data = {
             "name": "A" * 1000,
             "email": "long@example.com",
+            "username": "testuser",
             "user_id": str(user_id),
         }
         response = client.post("/user/", json=user_data)
@@ -282,8 +292,9 @@ class TestEdgeCases:
         """Test creating user with special characters in name."""
         user_id = uuid.uuid4()
         user_data = {
-            "name": "Test User <script>alert('xss')</script>",
+            "name": "Test Users <script>alert('xss')</script>",
             "email": "special@example.com",
+            "username": "testuser",
             "user_id": str(user_id),
         }
         response = client.post("/user/", json=user_data)
@@ -295,8 +306,9 @@ class TestEdgeCases:
         """Test creating multiple users simultaneously."""
         users = [
             {
-                "name": f"User {i}",
+                "name": f"Users {i}",
                 "email": f"user{i}@example.com",
+                "username": "testuser",
                 "user_id": str(uuid.uuid4()),
             }
             for i in range(5)
