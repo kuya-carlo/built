@@ -4,9 +4,7 @@ from .database import (
     Project,
     Status,
     Tasks,
-    User,
-    get_session,
-    init_db,
+    Users,
 )
 from .response import (
     ActivityLogResponse,
@@ -30,9 +28,7 @@ __all__ = [
     "Project",
     "Status",
     "Tasks",
-    "User",
-    "get_session",
-    "init_db",
+    "Users",
     "BaseResponse",
     "SuccessResponse",
     "SingleSuccessResponse",

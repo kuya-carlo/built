@@ -6,8 +6,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from src.models import ActivityLog, get_session
+from src.models import ActivityLog
 from src.routes.activity import ActivityLogRouter
+from src.utils import get_session
 
 
 @pytest.fixture

@@ -4,7 +4,9 @@ from typing import Optional
 from fastapi import Depends
 from sqlmodel import Session
 
-from src.models import ActivityLog, get_session
+from src.models import ActivityLog
+
+from .db_create import get_session
 
 
 def log(

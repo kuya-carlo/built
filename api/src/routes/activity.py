@@ -8,9 +8,8 @@ from src.models import (
     ActivityLogResponse,
     ErrorResponse,
     SingleSuccessResponse,
-    get_session,
 )
-from src.utils import log, prep_create, read
+from src.utils import get_session, log, prep_create, read
 
 # Activity log should be read-only.
 

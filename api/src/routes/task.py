@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Body, Depends
 from pydantic import BaseModel
@@ -9,14 +9,15 @@ from starlette.responses import JSONResponse
 
 from src.models import (
     ErrorResponse,
+    GroupSuccessResponse,
     SingleSuccessResponse,
     Status,
     SuccessResponse,
     TaskResponse,
     Tasks,
-    get_session,
 )
-from src.utils import create, delete, log, prep_create, read, update
+from src.utils import create, delete, get_session, log, prep_create, read, update
+from src.utils.helper import FilterMode, db_filter
 
 
 class TaskCreate(BaseModel):
@@ -74,7 +75,7 @@ class TaskRouter(APIRouter):
                 action="GET_TASK",
                 message=f"Got task with id {task_id}",
             )
-            return self._parse_task(task, session)
+            return self._parse_task(task)
 
         @self.post(
             "/",
@@ -153,10 +154,50 @@ class TaskRouter(APIRouter):
                 status_code=200, content=SuccessResponse(result="ok").model_dump_json()
             )
 
+        @self.get(
+            "/",
+            responses={
+                200: {
+                    "description": "Successfully got tasks",
+                    "model": GroupSuccessResponse[TaskResponse],
+                },
+                404: {"description": "Task not found", "model": ErrorResponse},
+                500: {"description": "Server Error", "model": ErrorResponse},
+            },
+        )
+        def get_tasks(
+            project_id: uuid.UUID,
+            limit: int = 5,
+            offset: int = 0,
+            session: Session = Depends(get_session),
+        ):
+            tasks = db_filter(
+                session,
+                Tasks,
+                project_id,
+                Tasks.project_id,
+                Tasks.name,
+                FilterMode.ALL,
+                limit,
+                offset,
+            )
+            if not tasks:
+                log(
+                    "LIST_TASKS",
+                    f"Listed task from project {project_id}",
+                    code=404,
+                    session=session,
+                )
+                raise ValueError(f"Materials with project id {project_id} not found")
+            log(
+                action="LIST_TASKS",
+                message=f"Listed task from project {project_id}",
+                session=session,
+            )
+            return self._parse_tasks(tasks)
+
     @staticmethod
-    def _parse_task(
-        task: Tasks, session: Optional[Session] = None
-    ) -> SingleSuccessResponse[TaskResponse]:
+    def _parse_task(task: Tasks) -> SingleSuccessResponse[TaskResponse]:
         return SingleSuccessResponse[TaskResponse](
             data=TaskResponse(
                 id=task.task_id,
@@ -166,6 +207,22 @@ class TaskRouter(APIRouter):
                 due_date=task.due_date,
                 status=task.status,
             )
+        )
+
+    @staticmethod
+    def _parse_tasks(tasks: List[Tasks]) -> GroupSuccessResponse[TaskResponse]:
+        return GroupSuccessResponse(
+            data=[
+                TaskResponse(
+                    id=task.task_id,
+                    project_id=task.project_id,
+                    name=task.name,
+                    description=task.description,
+                    due_date=task.due_date,
+                    status=task.status,
+                )
+                for task in tasks
+            ]
         )
 
 

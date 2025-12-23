@@ -6,9 +6,9 @@ from sqlmodel import Session
 from starlette.responses import JSONResponse
 
 from src.models import ErrorDescription, ErrorResponse
-from src.models.database import engine
 
 from .common import log
+from .db_create import engine
 
 
 def error_response(errors, status: int = 500) -> JSONResponse:
@@ -51,6 +51,20 @@ async def error_handler(request: Request, exc: Exception):
         status = exc.status_code
         title = "Error"
         detail = exc.detail
+        final_response = error_response(
+            [
+                {
+                    "status": status,
+                    "title": title,
+                    "detail": detail,
+                }
+            ],
+            status,
+        )
+    elif isinstance(exc, ValueError):
+        status = 404
+        title = "Error"
+        detail = str(exc)
         final_response = error_response(
             [
                 {
