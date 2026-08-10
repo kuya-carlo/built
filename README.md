@@ -1,17 +1,21 @@
-# Built
+# Built — maintenance log (canonical)
 
-A asset management system for construction companies
+Asset and maintenance tracking for construction work: materials, projects,
+tasks, and activity — a **maintenance log**, not a full ERP.
 
-## Table of Contents
+This repo is the **canonical** home for that product story. The overlapping
+`forgesure` experiment is superseded; see
+[kuyacarlo/forgesure](https://github.com/kuyacarlo/forgesure) for the pointer
+README only (that repo is not deleted).
 
-- [Built](#built)
-  - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-    - [Fullstack](#fullstack)
-    - [Manual](#manual)
-      - [Backend](#backend)
-      - [Frontend(dev)](#frontenddev)
-      - [Frontend(prod)](#frontendprod)
+Stack: Python API (`api/`) + Next.js frontend (`frontend/`).
+
+## Related
+
+| Repo | Role |
+|------|------|
+| **this repo (`built`)** | Canonical maintenance-log README and app |
+| [`forgesure`](https://github.com/kuyacarlo/forgesure) | Superseded product story → points here |
 
 ## Installation
 
@@ -30,14 +34,14 @@ cd api
 python main.py
 ```
 
-#### Frontend(dev)
+#### Frontend (dev)
 
 ```sh
 cd frontend
 pnpm run dev
 ```
 
-#### Frontend(prod)
+#### Frontend (prod)
 
 ```sh
 cd frontend
